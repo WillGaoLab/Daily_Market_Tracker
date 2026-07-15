@@ -91,7 +91,9 @@ also fail visibly. If the date is already in `data/history.csv`, it makes no
 changes. Manual GitHub Actions runs accept an optional date for backfills.
 
 For Streamlit Cloud, deploy this repository with `app.py` as the entry point;
-the service installs `requirements.txt` automatically.
+the service installs `requirements.txt` automatically. The hosted dashboard
+uses Google Analytics 4 and Microsoft Clarity to process usage and technical
+analytics data under their respective terms and privacy policies.
 
 ## GitHub publishing checklist
 

@@ -6,6 +6,7 @@ import csv
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 from scripts.history import HistoryValidationError, read_history
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -19,6 +20,51 @@ INSTRUMENTS = (
     ("dxy", "U.S. Dollar Index"),
     ("wti", "WTI Crude Oil"),
 )
+GA4_MEASUREMENT_ID = "G-B9DJEVW7SW"
+CLARITY_PROJECT_ID = "x1tq0msm2n"
+
+
+def render_analytics() -> None:
+    """Load hosted-app analytics without adding visible interface content."""
+    components.html(
+        f"""
+        <script async src="https://www.googletagmanager.com/gtag/js?id={GA4_MEASUREMENT_ID}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){{dataLayer.push(arguments);}}
+
+            const pageLocation = window.location.href;
+            const pagePath = window.location.pathname + window.location.search + window.location.hash;
+
+            if (!window.__dailyMarketTrackerGa4Loaded) {{
+                window.__dailyMarketTrackerGa4Loaded = true;
+                gtag("js", new Date());
+                gtag("config", "{GA4_MEASUREMENT_ID}", {{
+                    page_location: pageLocation,
+                    page_path: pagePath
+                }});
+            }} else if (window.__dailyMarketTrackerLastGa4Page !== pageLocation) {{
+                gtag("event", "page_view", {{
+                    page_location: pageLocation,
+                    page_path: pagePath
+                }});
+            }}
+            window.__dailyMarketTrackerLastGa4Page = pageLocation;
+        </script>
+        <script>
+            if (!window.__dailyMarketTrackerClarityLoaded) {{
+                window.__dailyMarketTrackerClarityLoaded = true;
+                (function(c,l,a,r,i,t,y){{
+                    c[a]=c[a]||function(){{(c[a].q=c[a].q||[]).push(arguments)}};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                }})(window, document, "clarity", "script", "{CLARITY_PROJECT_ID}");
+            }}
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 
 def load_history() -> list[dict[str, str]]:
@@ -26,6 +72,7 @@ def load_history() -> list[dict[str, str]]:
 
 
 st.set_page_config(page_title="Daily Market Tracker", layout="wide")
+render_analytics()
 st.title("Daily Market Tracker")
 try:
     rows = load_history()
