@@ -5,3 +5,4 @@ __pycache__/
 .matplotlib/
 .streamlit/secrets.toml
 demo/
+docs/
