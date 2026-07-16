@@ -21,7 +21,7 @@ INSTRUMENTS = (
     ("wti", "WTI Crude Oil"),
 )
 GA4_MEASUREMENT_ID = "G-B9DJEVW7SW"
-CLARITY_PROJECT_ID = "x1tq0msm2n"
+CLARITY_PROJECT_ID = "xn38mjsmco"
 
 
 def render_analytics() -> None:
