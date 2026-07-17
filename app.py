@@ -7,7 +7,7 @@ from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
-from scripts.history import HistoryValidationError, read_history
+from scripts.history import MISSING_VALUE, HistoryValidationError, read_history
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 HISTORY_PATH = PROJECT_ROOT / "data" / "history.csv"
@@ -15,7 +15,10 @@ FIGURES_DIR = PROJECT_ROOT / "figures"
 INSTRUMENTS = (
     ("sp500", "S&P 500"),
     ("nasdaq100", "Nasdaq-100 Futures"),
+    ("dow", "Dow Jones Industrial Average"),
     ("vix", "VIX"),
+    ("bitcoin", "Bitcoin"),
+    ("gold", "Gold Futures"),
     ("tnx", "U.S. 10-Year Treasury Yield"),
     ("dxy", "U.S. Dollar Index"),
     ("wti", "WTI Crude Oil"),
@@ -71,6 +74,11 @@ def load_history() -> list[dict[str, str]]:
     return sorted(read_history(HISTORY_PATH), key=lambda row: row["date"], reverse=True)
 
 
+def display_value(value: str) -> float | None:
+    """Return a numeric history value, preserving migrated unavailable values."""
+    return None if value == MISSING_VALUE else float(value)
+
+
 st.set_page_config(page_title="Daily Market Tracker", layout="wide")
 render_analytics()
 st.title("Daily Market Tracker")
@@ -95,15 +103,21 @@ else:
 st.subheader("Latest raw data")
 latest_data = []
 for key, label in INSTRUMENTS:
+    is_bitcoin = key == "bitcoin"
     latest_data.append(
         {
             "Indicator": label,
-            "Previous daily close": float(latest[f"{key}_previous_close"]),
-            "Open": float(latest[f"{key}_open"]),
-            "Gap": float(latest[f"{key}_gap"]),
-            "Gap %": float(latest[f"{key}_gap_pct"]),
+            "Previous daily close": display_value(latest[f"{key}_previous_close"]),
+            "Open / current price": display_value(
+                latest[f"{key}_{'current' if is_bitcoin else 'open'}"]
+            ),
+            "Gap / change": display_value(latest[f"{key}_{'change' if is_bitcoin else 'gap'}"]),
+            "Gap % / change %": display_value(
+                latest[f"{key}_{'change_pct' if is_bitcoin else 'gap_pct'}"]
+            ),
         }
     )
+st.caption("Bitcoin uses Yahoo Finance's current market price; all other indicators use their daily open.")
 st.dataframe(latest_data, width="stretch", hide_index=True)
 
 st.subheader("Historical data")

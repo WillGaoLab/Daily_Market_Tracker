@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import time
 from datetime import date, datetime, timedelta
 from urllib.error import HTTPError, URLError
@@ -18,7 +19,10 @@ YAHOO_HOSTS = ("https://query1.finance.yahoo.com", "https://query2.finance.yahoo
 INSTRUMENTS = (
     ("sp500", "S&P 500", "^GSPC"),
     ("nasdaq100", "Nasdaq-100 Futures", "NQ=F"),
+    ("dow", "Dow Jones Industrial Average", "^DJI"),
     ("vix", "VIX", "^VIX"),
+    ("bitcoin", "Bitcoin", "BTC-USD"),
+    ("gold", "Gold Futures", "GC=F"),
     ("tnx", "U.S. 10-Year Treasury Yield", "^TNX"),
     ("dxy", "U.S. Dollar Index", "DX-Y.NYB"),
     ("wti", "WTI Crude Oil", "CL=F"),
@@ -160,6 +164,37 @@ def fetch_daily_bars(symbol: str) -> list[dict[str, float | date]]:
     return sorted(bars, key=lambda bar: bar["date"])
 
 
+def fetch_current_price(symbol: str) -> float:
+    """Return Yahoo Finance's current regular-market price for one symbol."""
+    params = urlencode({"range": "1d", "interval": "1m", "includePrePost": "false"})
+    path = f"/v8/finance/chart/{symbol}?{params}"
+    payload: dict | None = None
+    last_error: Exception | None = None
+    for host in YAHOO_HOSTS:
+        try:
+            payload = get_json(f"{host}{path}")
+            break
+        except DataUnavailable as error:
+            last_error = error
+    if payload is None:
+        raise DataUnavailable(f"Yahoo unavailable for {symbol}: {last_error}")
+
+    chart = payload.get("chart") or {}
+    if chart.get("error"):
+        raise DataUnavailable(f"Yahoo error for {symbol}: {chart['error']}")
+    results = chart.get("result") or []
+    if not results:
+        raise DataUnavailable(f"Yahoo returned no chart data for {symbol}.")
+
+    try:
+        current = float((results[0].get("meta") or {})["regularMarketPrice"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise DataUnavailable(f"Yahoo returned no current market price for {symbol}.") from error
+    if not math.isfinite(current):
+        raise DataUnavailable(f"Yahoo returned a non-finite current market price for {symbol}.")
+    return current
+
+
 def gap_fields(bars: list[dict[str, float | date]], target_date: date) -> dict[str, float]:
     """Calculate an opening gap against the prior available daily close."""
     target_index = next(
@@ -178,8 +213,27 @@ def gap_fields(bars: list[dict[str, float | date]], target_date: date) -> dict[s
     }
 
 
+def bitcoin_change_fields(
+    bars: list[dict[str, float | date]], target_date: date, current: float
+) -> dict[str, float]:
+    """Calculate Bitcoin's change from the prior daily close to its current price."""
+    target_index = next(
+        (index for index, bar in enumerate(bars) if bar["date"] == target_date), None
+    )
+    if target_index is None or target_index == 0:
+        raise DataUnavailable(f"No prior close available for {target_date.isoformat()}.")
+    previous_close = float(bars[target_index - 1]["close"])
+    change = current - previous_close
+    return {
+        "previous_close": previous_close,
+        "current": current,
+        "change": change,
+        "change_pct": change / previous_close * 100,
+    }
+
+
 def fetch_record(target_date: date) -> dict[str, str]:
-    """Fetch all six instruments and return one history.csv-compatible row."""
+    """Fetch nine instruments and return one history.csv-compatible row."""
     if target_date.weekday() >= 5:
         raise MarketClosed(f"{target_date.isoformat()} is a weekend.")
     if is_us_market_holiday(target_date):
@@ -189,7 +243,10 @@ def fetch_record(target_date: date) -> dict[str, str]:
     for key, label, symbol in INSTRUMENTS:
         bars = fetch_daily_bars(symbol)
         try:
-            values = gap_fields(bars, target_date)
+            if key == "bitcoin":
+                values = bitcoin_change_fields(bars, target_date, fetch_current_price(symbol))
+            else:
+                values = gap_fields(bars, target_date)
         except DataUnavailable as error:
             raise DataUnavailable(f"{label}: {error}") from error
         for field, value in values.items():
@@ -198,7 +255,7 @@ def fetch_record(target_date: date) -> dict[str, str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Fetch daily opening gaps from Yahoo Finance.")
+    parser = argparse.ArgumentParser(description="Fetch daily opening gaps and Bitcoin's current-price change.")
     parser.add_argument("--date", type=date.fromisoformat, default=business_today())
     args = parser.parse_args()
     print(json.dumps(fetch_record(args.date), indent=2))

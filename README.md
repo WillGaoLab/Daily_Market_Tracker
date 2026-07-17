@@ -1,32 +1,56 @@
 # Daily Market Tracker
 
-Daily Market Tracker records opening gaps for six indicators, creates a daily
-Market Fingerprint, and presents the history in Streamlit. It is an observation
-tool, not a market-prediction system. It is a WillGaoLab open-source project.
+Daily Market Tracker 2.0 records opening gaps and current-price changes for
+nine indicators, creates a daily Market Fingerprint, and presents the history
+in Streamlit. It is an observation tool, not a market-prediction system. It is
+a WillGaoLab open-source project.
 
 Read the project [usage disclaimer](DISCLAIMER.md) before using, publishing,
 or redistributing generated data or figures.
 
 ## Features
 
-- Collects Yahoo Finance daily close/open data for six market indicators.
+- Tracks nine indicators in three groups: Equities, Risk & Sentiment, and
+  Macro.
+- Collects Yahoo Finance daily close/open data for eight indicators and a
+  current Bitcoin market price for `BTC-USD`.
 - Maintains `data/history.csv` as the single source of truth.
 - Generates daily Market Fingerprint PNGs and displays the latest data in
   Streamlit.
+
+## Version 2.0
+
+Version 2.0 expands the original six-indicator tracker with the Dow Jones
+Industrial Average (`^DJI`), Gold Futures (`GC=F`), and Bitcoin (`BTC-USD`).
+
+- Equities: S&P 500, Nasdaq-100 Futures, Dow Jones Industrial Average
+- Risk & Sentiment: VIX, Bitcoin, Gold Futures
+- Macro: U.S. 10-Year Treasury Yield, U.S. Dollar Index, WTI Crude Oil
+
+Bitcoin trades continuously, so it does not use a daily open or opening gap.
+Instead, the tracker stores `bitcoin_previous_close`, `bitcoin_current`,
+`bitcoin_change`, and `bitcoin_change_pct`, where the current price is Yahoo
+Finance's current market price at collection time.
 
 ## Data and outputs
 
 `data/history.csv` is the single source of truth. It has one row per U.S.
 trading day and retains each instrument's previous Yahoo Finance daily close,
-current daily open, absolute gap, and gap percentage.
+current daily open, absolute gap, and gap percentage. Bitcoin instead retains
+its previous daily close, current Yahoo Finance market price, absolute change,
+and change percentage.
 
-The tracked Yahoo Finance symbols are `^GSPC`, `NQ=F`, `^VIX`, `^TNX`,
-`DX-Y.NYB`, and `CL=F`. Fingerprint PNGs in `figures/` are generated only from
-the history file.
+The tracked Yahoo Finance symbols are `^GSPC`, `^DJI`, `NQ=F`, `^VIX`, `^TNX`,
+`DX-Y.NYB`, `CL=F`, `GC=F`, and `BTC-USD`. Fingerprint PNGs in `figures/` are
+generated only from the history file.
 
-The initial `2026-07-15` row was manually collected from the prototype's
-Yahoo Finance snapshot and is retained as a documented seed. All later rows
-are collected automatically from Yahoo Finance daily bars.
+The migrated history preserves its original `2026-07-15` manual seed and
+`2026-07-16` automated record. Later rows are collected automatically from
+Yahoo Finance; Bitcoin's current-price values are observed at collection time.
+
+Version 2.0 includes a one-time in-place schema migration. It preserves the
+original records and leaves unrecoverable historical Bitcoin live-price fields
+as `NA`; all newly appended automated records contain the complete schema.
 
 ## Local setup
 
@@ -71,7 +95,7 @@ python scripts/daily_pipeline.py --date YYYY-MM-DD
 Generate a fingerprint for an existing history date:
 
 ```bash
-python scripts/generate_fingerprint.py --date 2026-07-15
+python scripts/generate_fingerprint.py --date 2026-07-17
 ```
 
 Launch the dashboard:
@@ -117,7 +141,10 @@ rights to Yahoo Finance or exchange-provided data.
 
 ## Notes
 
-Yahoo Finance daily bars are used consistently for all instruments.
+Yahoo Finance daily bars are used for the eight non-Bitcoin indicators.
+Bitcoin uses the provider's current market price, so a manual backfill records
+the current Bitcoin price available when that backfill runs, not a historical
+intraday price for the requested date.
 
 The local `demo/` folder preserves the original prototype and manual example;
 it is intentionally excluded from GitHub.

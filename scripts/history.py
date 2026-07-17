@@ -7,24 +7,47 @@ import math
 from datetime import date
 from pathlib import Path
 
-INSTRUMENT_KEYS = ("sp500", "nasdaq100", "vix", "tnx", "dxy", "wti")
+INSTRUMENT_KEYS = (
+    "sp500",
+    "nasdaq100",
+    "dow",
+    "vix",
+    "bitcoin",
+    "gold",
+    "tnx",
+    "dxy",
+    "wti",
+)
+MISSING_VALUE = "NA"
 FIELDNAMES = ["date", "source"]
 for _key in INSTRUMENT_KEYS:
-    FIELDNAMES.extend(
-        [
-            f"{_key}_previous_close",
-            f"{_key}_open",
-            f"{_key}_gap",
-            f"{_key}_gap_pct",
-        ]
-    )
+    if _key == "bitcoin":
+        FIELDNAMES.extend(
+            [
+                "bitcoin_previous_close",
+                "bitcoin_current",
+                "bitcoin_change",
+                "bitcoin_change_pct",
+            ]
+        )
+    else:
+        FIELDNAMES.extend(
+            [
+                f"{_key}_previous_close",
+                f"{_key}_open",
+                f"{_key}_gap",
+                f"{_key}_gap_pct",
+            ]
+        )
 
 
 class HistoryValidationError(ValueError):
     """history.csv does not match the expected schema or contains invalid data."""
 
 
-def validate_record(row: dict[str, str], line_number: int | None = None) -> None:
+def validate_record(
+    row: dict[str, str], line_number: int | None = None, allow_missing: bool = False
+) -> None:
     location = f" at row {line_number}" if line_number is not None else ""
     if list(row) != FIELDNAMES:
         raise HistoryValidationError(f"Unexpected history.csv fields{location}.")
@@ -36,6 +59,10 @@ def validate_record(row: dict[str, str], line_number: int | None = None) -> None
         raise HistoryValidationError(f"Missing source{location}.")
 
     for field in FIELDNAMES[2:]:
+        if row[field] == MISSING_VALUE:
+            if allow_missing:
+                continue
+            raise HistoryValidationError(f"Missing {field}{location}.")
         try:
             value = float(row[field])
         except (KeyError, TypeError, ValueError) as error:
@@ -56,7 +83,7 @@ def read_history(path: Path) -> list[dict[str, str]]:
 
     dates: set[str] = set()
     for line_number, row in enumerate(rows, start=2):
-        validate_record(row, line_number)
+        validate_record(row, line_number, allow_missing=True)
         if row["date"] in dates:
             raise HistoryValidationError(f"Duplicate date in history.csv: {row['date']}")
         dates.add(row["date"])

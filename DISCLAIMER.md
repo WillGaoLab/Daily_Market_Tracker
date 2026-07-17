@@ -1,11 +1,12 @@
 # Usage Disclaimer
 
-Last reviewed: July 15, 2026
+Last reviewed: July 17, 2026
 
-Daily Market Tracker retrieves and summarizes publicly available Yahoo Finance
-daily-bar data for six market indicators. It records opening-gap observations,
-generates a Market Fingerprint visualization, and stores derived values in a
-historical CSV for long-term market observation and research.
+Daily Market Tracker 2.0 retrieves and summarizes publicly available Yahoo
+Finance market data for nine indicators. It records opening-gap observations
+for eight indicators, a current-price change observation for Bitcoin, generates
+a Market Fingerprint visualization, and stores derived values in a historical
+CSV for long-term market observation and research.
 
 The project is intended for low-volume automated use: at most one scheduled
 collection per U.S. trading day, plus occasional manual backfills. It is not
@@ -42,9 +43,21 @@ should consult qualified professionals where appropriate.
 
 Yahoo Finance data can be delayed, revised, unavailable, or defined according
 to provider-specific session conventions. Daily Market Tracker uses Yahoo
-Finance daily close and daily open fields consistently for all instruments.
-The initial `2026-07-15` history row is a manually collected seed from the
-prototype; later rows are collected automatically.
+Finance daily close and daily open fields for all instruments except Bitcoin.
+Bitcoin uses its previous daily close and current Yahoo Finance market price.
+The migrated history preserves its original `2026-07-15` manual seed and
+`2026-07-16` automated record; later rows are collected automatically.
+
+Bitcoin trades continuously, but Daily Market Tracker records one combined
+observation per U.S. trading day. Its `bitcoin_current` value is the current
+Yahoo Finance market price at collection time, not a daily open, day-range
+value, or guaranteed historical price. For that reason, a manual backfill may
+record a Bitcoin price observed when the backfill runs rather than one observed
+on the requested historical date.
+
+Version 2.0 preserves pre-upgrade history in the single `data/history.csv`
+file. Historical values unavailable under the expanded schema may be recorded
+as `NA`; subsequent automated records use the complete schema.
 
 Historical values may differ from later downloads if Yahoo Finance revises
 previously published daily data. Daily Market Tracker records observations at
