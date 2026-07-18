@@ -24,7 +24,7 @@ for _key in INSTRUMENT_KEYS:
     if _key == "bitcoin":
         FIELDNAMES.extend(
             [
-                "bitcoin_previous_close",
+                "bitcoin_open",
                 "bitcoin_current",
                 "bitcoin_change",
                 "bitcoin_change_pct",

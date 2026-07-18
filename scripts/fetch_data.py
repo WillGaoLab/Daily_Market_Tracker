@@ -6,7 +6,7 @@ import argparse
 import json
 import math
 import time
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -116,8 +116,10 @@ def get_json(url: str, attempts: int = 3, timeout: int = 20) -> dict:
     raise DataUnavailable(f"Yahoo request failed: {last_error}") from last_error
 
 
-def fetch_daily_bars(symbol: str) -> list[dict[str, float | date]]:
-    """Return recent Yahoo daily bars with the New York calendar date attached."""
+def fetch_daily_bars(
+    symbol: str, bar_timezone: tzinfo = TIMEZONE, require_close: bool = True
+) -> list[dict[str, float | date]]:
+    """Return recent Yahoo daily bars with dates interpreted in bar_timezone."""
     params = urlencode({"range": "10d", "interval": "1d", "includePrePost": "false"})
     path = f"/v8/finance/chart/{symbol}?{params}"
     payload: dict | None = None
@@ -143,22 +145,37 @@ def fetch_daily_bars(symbol: str) -> list[dict[str, float | date]]:
     if not quote:
         raise DataUnavailable(f"Yahoo returned no price fields for {symbol}.")
 
+    timestamps = result.get("timestamp") or []
+    opens = quote[0].get("open") or []
+    closes = quote[0].get("close") or []
     bars: list[dict[str, float | date]] = []
-    for timestamp, open_, close in zip(
-        result.get("timestamp") or [],
-        quote[0].get("open") or [],
-        quote[0].get("close") or [],
-        strict=True,
-    ):
-        if open_ is None or close is None:
-            continue
-        bars.append(
-            {
-                "date": datetime.fromtimestamp(timestamp, TIMEZONE).date(),
-                "open": float(open_),
-                "close": float(close),
-            }
-        )
+    if require_close:
+        for timestamp, open_, close in zip(timestamps, opens, closes, strict=True):
+            if open_ is None or close is None:
+                continue
+            bars.append(
+                {
+                    "date": datetime.fromtimestamp(timestamp, bar_timezone).date(),
+                    "open": float(open_),
+                    "close": float(close),
+                }
+            )
+    else:
+        for timestamp, open_ in zip(timestamps, opens, strict=True):
+            if open_ is None:
+                continue
+            try:
+                daily_open = float(open_)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(daily_open) or daily_open <= 0:
+                continue
+            bars.append(
+                {
+                    "date": datetime.fromtimestamp(timestamp, bar_timezone).date(),
+                    "open": daily_open,
+                }
+            )
     if not bars:
         raise DataUnavailable(f"Yahoo returned no usable daily bars for {symbol}.")
     return sorted(bars, key=lambda bar: bar["date"])
@@ -214,21 +231,23 @@ def gap_fields(bars: list[dict[str, float | date]], target_date: date) -> dict[s
 
 
 def bitcoin_change_fields(
-    bars: list[dict[str, float | date]], target_date: date, current: float
+    bars: list[dict[str, float | date]], current: float, current_utc_date: date | None = None
 ) -> dict[str, float]:
-    """Calculate Bitcoin's change from the prior daily close to its current price."""
-    target_index = next(
-        (index for index, bar in enumerate(bars) if bar["date"] == target_date), None
-    )
-    if target_index is None or target_index == 0:
-        raise DataUnavailable(f"No prior close available for {target_date.isoformat()}.")
-    previous_close = float(bars[target_index - 1]["close"])
-    change = current - previous_close
+    """Calculate Bitcoin's change from the current UTC daily open to its current price."""
+    current_utc_date = current_utc_date or datetime.now(UTC).date()
+    current_bars = [bar for bar in bars if bar["date"] == current_utc_date]
+    if not current_bars:
+        raise DataUnavailable(
+            f"No valid BTC daily open available for current UTC date "
+            f"{current_utc_date.isoformat()}."
+        )
+    daily_open = float(current_bars[-1]["open"])
+    change = current - daily_open
     return {
-        "previous_close": previous_close,
+        "open": daily_open,
         "current": current,
         "change": change,
-        "change_pct": change / previous_close * 100,
+        "change_pct": change / daily_open * 100,
     }
 
 
@@ -241,10 +260,14 @@ def fetch_record(target_date: date) -> dict[str, str]:
 
     record = {"date": target_date.isoformat(), "source": "Yahoo Finance"}
     for key, label, symbol in INSTRUMENTS:
-        bars = fetch_daily_bars(symbol)
+        bars = fetch_daily_bars(
+            symbol,
+            UTC if key == "bitcoin" else TIMEZONE,
+            require_close=key != "bitcoin",
+        )
         try:
             if key == "bitcoin":
-                values = bitcoin_change_fields(bars, target_date, fetch_current_price(symbol))
+                values = bitcoin_change_fields(bars, fetch_current_price(symbol))
             else:
                 values = gap_fields(bars, target_date)
         except DataUnavailable as error:
@@ -255,7 +278,9 @@ def fetch_record(target_date: date) -> dict[str, str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Fetch daily opening gaps and Bitcoin's current-price change.")
+    parser = argparse.ArgumentParser(
+        description="Fetch daily opening gaps and Bitcoin's UTC-open-to-current change."
+    )
     parser.add_argument("--date", type=date.fromisoformat, default=business_today())
     args = parser.parse_args()
     print(json.dumps(fetch_record(args.date), indent=2))

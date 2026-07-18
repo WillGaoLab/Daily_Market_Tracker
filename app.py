@@ -107,7 +107,9 @@ for key, label in INSTRUMENTS:
     latest_data.append(
         {
             "Indicator": label,
-            "Previous daily close": display_value(latest[f"{key}_previous_close"]),
+            "Previous close / UTC open": display_value(
+                latest[f"{key}_{'open' if is_bitcoin else 'previous_close'}"]
+            ),
             "Open / current price": display_value(
                 latest[f"{key}_{'current' if is_bitcoin else 'open'}"]
             ),
@@ -117,7 +119,10 @@ for key, label in INSTRUMENTS:
             ),
         }
     )
-st.caption("Bitcoin uses Yahoo Finance's current market price; all other indicators use their daily open.")
+st.caption(
+    "Bitcoin compares its 00:00 UTC daily open with Yahoo Finance's current market price; "
+    "all other indicators compare the previous close with their daily open."
+)
 st.dataframe(latest_data, width="stretch", hide_index=True)
 
 st.subheader("Historical data")

@@ -43,17 +43,17 @@ should consult qualified professionals where appropriate.
 
 Yahoo Finance data can be delayed, revised, unavailable, or defined according
 to provider-specific session conventions. Daily Market Tracker uses Yahoo
-Finance daily close and daily open fields for all instruments except Bitcoin.
-Bitcoin uses its previous daily close and current Yahoo Finance market price.
+Finance daily close and daily open fields for all instruments. Bitcoin uses
+the latest 00:00 UTC daily open and current Yahoo Finance market price
+available when the script runs.
 The migrated history preserves its original `2026-07-15` manual seed and
 `2026-07-16` automated record; later rows are collected automatically.
 
 Bitcoin trades continuously, but Daily Market Tracker records one combined
-observation per U.S. trading day. Its `bitcoin_current` value is the current
-Yahoo Finance market price at collection time, not a daily open, day-range
-value, or guaranteed historical price. For that reason, a manual backfill may
-record a Bitcoin price observed when the backfill runs rather than one observed
-on the requested historical date.
+observation per U.S. trading day. Its `bitcoin_open` value is the latest daily
+open available when collection runs, while `bitcoin_current` is the current
+Yahoo Finance market price at collection time. Neither is guaranteed to be a
+historical price for a manually requested backfill date.
 
 Version 2.0 preserves pre-upgrade history in the single `data/history.csv`
 file. Historical values unavailable under the expanded schema may be recorded

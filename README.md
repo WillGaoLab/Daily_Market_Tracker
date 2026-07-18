@@ -12,8 +12,8 @@ or redistributing generated data or figures.
 
 - Tracks nine indicators in three groups: Equities, Risk & Sentiment, and
   Macro.
-- Collects Yahoo Finance daily close/open data for eight indicators and a
-  current Bitcoin market price for `BTC-USD`.
+- Collects Yahoo Finance daily close/open data for eight indicators and the
+  00:00 UTC open plus current Bitcoin market price for `BTC-USD`.
 - Maintains `data/history.csv` as the single source of truth.
 - Generates daily Market Fingerprint PNGs and displays the latest data in
   Streamlit.
@@ -27,18 +27,19 @@ Industrial Average (`^DJI`), Gold Futures (`GC=F`), and Bitcoin (`BTC-USD`).
 - Risk & Sentiment: VIX, Bitcoin, Gold Futures
 - Macro: U.S. 10-Year Treasury Yield, U.S. Dollar Index, WTI Crude Oil
 
-Bitcoin trades continuously, so it does not use a daily open or opening gap.
-Instead, the tracker stores `bitcoin_previous_close`, `bitcoin_current`,
-`bitcoin_change`, and `bitcoin_change_pct`, where the current price is Yahoo
-Finance's current market price at collection time.
+Bitcoin trades continuously, so its observation uses the latest 00:00 UTC
+daily open available when the script runs instead of a prior close. The
+tracker stores `bitcoin_open`, `bitcoin_current`, `bitcoin_change`, and
+`bitcoin_change_pct`, where the current price is Yahoo Finance's current market
+price at collection time.
 
 ## Data and outputs
 
 `data/history.csv` is the single source of truth. It has one row per U.S.
-trading day and retains each instrument's previous Yahoo Finance daily close,
-current daily open, absolute gap, and gap percentage. Bitcoin instead retains
-its previous daily close, current Yahoo Finance market price, absolute change,
-and change percentage.
+trading day and retains each non-Bitcoin instrument's previous Yahoo Finance
+daily close, current daily open, absolute gap, and gap percentage. Bitcoin
+instead retains the latest 00:00 UTC daily open available at collection time,
+the current Yahoo Finance market price, absolute change, and change percentage.
 
 The tracked Yahoo Finance symbols are `^GSPC`, `^DJI`, `NQ=F`, `^VIX`, `^TNX`,
 `DX-Y.NYB`, `CL=F`, `GC=F`, and `BTC-USD`. Fingerprint PNGs in `figures/` are
@@ -141,10 +142,11 @@ rights to Yahoo Finance or exchange-provided data.
 
 ## Notes
 
-Yahoo Finance daily bars are used for the eight non-Bitcoin indicators.
-Bitcoin uses the provider's current market price, so a manual backfill records
-the current Bitcoin price available when that backfill runs, not a historical
-intraday price for the requested date.
+Yahoo Finance daily bars are used for all indicators. For Bitcoin, only the
+latest daily bar's open is used; its comparison price is the provider's current
+market price. A manual backfill therefore records the BTC daily open and
+current price available when the backfill runs, not historical prices for the
+requested date.
 
 The local `demo/` folder preserves the original prototype and manual example;
 it is intentionally excluded from GitHub.
