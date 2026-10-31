@@ -83,7 +83,7 @@ def render_svg(target_date: str, history_path: Path = ROOT / "data/history.csv")
         ):
             target = ET.SubElement(overlay, f"{{{SVG_NS}}}{tag}", {**attrs, **geometry})
             ET.SubElement(target, f"{{{SVG_NS}}}title").text = attrs["aria-label"]
-    return ET.tostring(svg, encoding="unicode")
+    return "\n".join(line.rstrip() for line in ET.tostring(svg, encoding="unicode").splitlines()) + "\n"
 
 
 def export_svg(target_date: str, history_path: Path = ROOT / "data/history.csv", output_dir: Path = ROOT / "figures") -> Path:
