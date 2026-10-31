@@ -30,7 +30,10 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from matplotlib.patches import Rectangle
 
-from history import read_history
+try:
+    from .history import read_history
+except ImportError:  # Direct CLI invocation.
+    from history import read_history
 
 HISTORY_PATH = PROJECT_ROOT / "data" / "history.csv"
 FIGURES_DIR = PROJECT_ROOT / "figures"
@@ -108,7 +111,8 @@ def generate(
     radii = clipped + visual_limit
     ax_radar.set_theta_offset(np.pi / 2)
     ax_radar.set_theta_direction(-1)
-    ax_radar.plot(np.append(angles, angles[0]), np.append(radii, radii[0]), lw=2, marker="o")
+    radar_line, = ax_radar.plot(np.append(angles, angles[0]), np.append(radii, radii[0]), lw=2, marker="o")
+    radar_line.set_gid("fingerprint-radar")
     ax_radar.fill(np.append(angles, angles[0]), np.append(radii, radii[0]), alpha=0.15)
     radar_labels = list(labels)
     for index in (1, 2):
@@ -140,7 +144,8 @@ def generate(
         ax_radar.text(angle, np.clip(radius + offset, 0.05 * visual_limit, 1.95 * visual_limit), f"{raw:+.3f}%", ha="center", va="center", fontsize=10)
     ax_radar.set_title("Market Shape", fontsize=15, pad=18)
 
-    ax_heatmap.imshow(adjusted_values.reshape(1, -1), cmap="RdYlGn", vmin=-visual_limit, vmax=visual_limit, aspect="auto")
+    heatmap = ax_heatmap.imshow(adjusted_values.reshape(1, -1), cmap="RdYlGn", vmin=-visual_limit, vmax=visual_limit, aspect="auto")
+    heatmap.set_gid("fingerprint-heatmap")
     ax_heatmap.set_xticks(np.arange(len(labels)), labels, fontsize=11)
     ax_heatmap.set_yticks([])
     ax_heatmap.set_box_aspect(0.30)
