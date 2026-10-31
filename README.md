@@ -15,8 +15,9 @@ or redistributing generated data or figures.
 - Collects Yahoo Finance daily close/open data for eight indicators and the
   00:00 UTC open plus current Bitcoin market price for `BTC-USD`.
 - Maintains `data/history.csv` as the single source of truth.
-- Generates daily Market Fingerprint PNGs and displays the latest data in
-  Streamlit.
+- Preserves the original Matplotlib radar/heatmap and PNG generator.
+- Adds interactive SVG fingerprints in Streamlit and on the website: historical
+  date selection, point/tile details, keyboard focus, zoom, drag, and SVG export.
 
 ## Version 2.0
 
@@ -98,6 +99,20 @@ Generate a fingerprint for an existing history date:
 ```bash
 python scripts/generate_fingerprint.py --date 2026-07-17
 ```
+
+Export interactive versions of existing history (no price fetching or history changes):
+
+```bash
+python scripts/interactive_fingerprint.py --all
+```
+
+A single date can be exported with `--date YYYY-MM-DD`. SVGs in `figures/`
+come from the same Matplotlib function as the PNG, with transparent interaction
+targets added at the original artist coordinates. `web/fingerprint.js` and
+`web/fingerprint.css` are shared with the website under `assets/market/`.
+The website keeps historical chart selection separate from its dated commentary.
+Unavailable migrated Bitcoin values remain unavailable; no complete chart is
+invented for those dates. The scheduled pipeline writes both PNG and SVG.
 
 Launch the dashboard:
 

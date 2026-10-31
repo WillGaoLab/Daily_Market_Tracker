@@ -10,6 +10,7 @@ from pathlib import Path
 
 from fetch_data import MarketClosed, business_today, fetch_record
 from generate_fingerprint import generate
+from interactive_fingerprint import export_svg
 from history import HistoryValidationError, append_record, read_history
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,15 @@ def main(target_date: date | None = None) -> int:
         return 1
     if any(row["date"] == date_text for row in history):
         logging.info("Skipping %s: record already exists in data/history.csv.", date_text)
+        if not (PROJECT_ROOT / "figures" / f"{date_text}.svg").exists():
+            try:
+                export_svg(date_text)
+            except ValueError as error:
+                record = next(row for row in history if row["date"] == date_text)
+                if "NA" not in record.values():
+                    logging.error("Could not generate interactive fingerprint: %s", error)
+                    return 1
+                logging.warning("Interactive figure unavailable: %s", error)
         return 0
 
     try:
@@ -41,6 +51,7 @@ def main(target_date: date | None = None) -> int:
     try:
         append_record(HISTORY_PATH, record)
         figure = generate(date_text)
+        export_svg(date_text)
     except (HistoryValidationError, ValueError) as error:
         logging.error("Could not update history or generate fingerprint: %s", error)
         return 1
