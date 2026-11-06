@@ -1,0 +1,68 @@
+name: Mirror canonical market outputs
+run-name: "Mirror market — ${{ inputs.date || 'scheduled recovery' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "New York market date (YYYY-MM-DD); defaults to today."
+        required: false
+        type: string
+      source_ref:
+        description: "Canonical main or exact source commit SHA."
+        default: "main"
+        required: false
+        type: string
+      verify_only:
+        description: "Validate source files without modifying the mirror."
+        default: false
+        type: boolean
+  schedule:
+    - cron: "35 22 * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-market-update
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate source reference
+        env:
+          SOURCE_REF: ${{ inputs.source_ref || 'main' }}
+        run: |
+          [[ "$SOURCE_REF" == main || "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]] || exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: PeidongGao/Daily_Market_Tracker
+          ref: ${{ inputs.source_ref || 'main' }}
+          path: .canonical
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Copy the canonical row, PNG and SVG
+        env:
+          TARGET_DATE: ${{ inputs.date }}
+          VERIFY_ONLY: ${{ inputs.verify_only }}
+        run: |
+          args=(--source-root .canonical --destination-root .)
+          if [ -n "$TARGET_DATE" ]; then args+=(--date "$TARGET_DATE"); fi
+          if [ "$VERIFY_ONLY" = true ]; then args+=(--verify-source-only); fi
+          python .canonical/scripts/sync_mirror.py "${args[@]}"
+      - name: Commit synchronized outputs
+        if: inputs.verify_only != true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/history.csv figures
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: mirror canonical market outputs"
+            git push
+          fi
