@@ -1,9 +1,7 @@
 name: daily-market
 
 on:
-  schedule:
-    # 22:15 UTC is after the U.S. cash close in both EST and EDT.
-    - cron: "15 22 * * 1-5"
+  # Automatic runs use mirror_market.yml. Keep this workflow for manual use.
   workflow_dispatch:
     inputs:
       date:
