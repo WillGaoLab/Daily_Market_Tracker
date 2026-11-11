@@ -6,3 +6,8 @@ __pycache__/
 .streamlit/secrets.toml
 demo/
 docs/
+# Scheduler tooling and local secrets (never publish credentials).
+automation/scheduler/node_modules/
+automation/scheduler/.wrangler/
+automation/scheduler/.dev.vars*
+automation/scheduler/worker-configuration.d.ts
