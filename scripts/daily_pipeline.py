@@ -28,15 +28,17 @@ def main(target_date: date | None = None) -> int:
         return 1
     if any(row["date"] == date_text for row in history):
         logging.info("Skipping %s: record already exists in data/history.csv.", date_text)
-        if not (PROJECT_ROOT / "figures" / f"{date_text}.svg").exists():
-            try:
+        try:
+            if not (PROJECT_ROOT / "figures" / f"{date_text}.png").exists():
+                generate(date_text)
+            if not (PROJECT_ROOT / "figures" / f"{date_text}.svg").exists():
                 export_svg(date_text)
-            except ValueError as error:
-                record = next(row for row in history if row["date"] == date_text)
-                if "NA" not in record.values():
-                    logging.error("Could not generate interactive fingerprint: %s", error)
-                    return 1
-                logging.warning("Interactive figure unavailable: %s", error)
+        except ValueError as error:
+            record = next(row for row in history if row["date"] == date_text)
+            if "NA" not in record.values():
+                logging.error("Could not repair fingerprint: %s", error)
+                return 1
+            logging.warning("Figure unavailable for migrated data: %s", error)
         return 0
 
     try:

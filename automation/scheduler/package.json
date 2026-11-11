@@ -1,0 +1,16 @@
+{
+  "name": "daily-market-scheduler",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test scheduler.test.mjs",
+    "types": "wrangler types",
+    "check": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "test:runtime": "node --test scheduler.runtime.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.158.0",
+    "miniflare": "5.20261104.0-beta"
+  }
+}

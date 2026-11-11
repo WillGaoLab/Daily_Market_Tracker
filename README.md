@@ -122,13 +122,18 @@ streamlit run app.py
 
 ## Automation and deployment
 
-`.github/workflows/daily_market.yml` runs on weekdays at 22:15 UTC, which is
-after the U.S. cash close in both Eastern Standard and Daylight Time. Python
-uses `America/New_York`, skips weekends, and treats a missing same-day S&P 500
-bar on an expected trading day as a failure. Regular NYSE holidays are listed
-in the code without an external calendar dependency; rare unplanned closures
-also fail visibly. If the date is already in `data/history.csv`, it makes no
-changes. Manual GitHub Actions runs accept an optional date for backfills.
+This repository mirrors canonical outputs from `PeidongGao/Daily_Market_Tracker`.
+The shared Cloudflare Worker checks the canonical collector at 16:20
+America/New_York, dispatches this repository's `mirror_market.yml` once source
+outputs are ready, and verifies matching daily rows and PNG/SVG files at 16:30.
+The mirror's native schedule remains a delayed recovery fallback; the legacy
+`daily_market.yml` collector is manual-only.
+
+Shared application, scheduler, and test code is synchronized with the canonical
+repository. The deployed Worker remains a single instance, managed from the
+canonical checkout; copying its source here does not deploy another Worker.
+Historical mirror records are preserved. Future synchronization copies new dates
+and fails on conflicting historical rows rather than overwriting them.
 
 For Streamlit Cloud, deploy this repository with `app.py` as the entry point;
 the service installs `requirements.txt` automatically. The hosted dashboard
